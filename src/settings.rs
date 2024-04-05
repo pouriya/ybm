@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use crossterm::style::Color;
 use serde::{Deserialize, Deserializer};
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, ffi::OsString, fmt::Display, fs, path::Path};
 
 #[derive(Parser)]
 #[command(version, about, author, long_about = None)]
@@ -10,6 +10,12 @@ pub struct CliArg {
     /// Enables tracing.
     #[arg(global = true, long)]
     pub trace: bool,
+    /// Enables debug info.
+    #[arg(global = true, long)]
+    pub debug: bool,
+    /// No logging at all.
+    #[arg(global = true, long)]
+    pub quiet: bool,
     #[command(subcommand)]
     pub maybe_subcommand: Option<CliSubCommand>,
 }
@@ -20,8 +26,41 @@ pub enum CliSubCommand {
     Tui {
         /// A Toml configuration file containing issuers and secrets
         #[arg(default_value_t = default_config_file())]
-        config_file: String,
+        config_file: PathBuf,
     },
+    /// Detects account info from various input types
+    #[command(subcommand)]
+    From(CliFrom),
+}
+
+#[derive(Subcommand)]
+pub enum CliFrom {
+    /// Detects account info from various input types.
+    Webcam {
+        #[arg(default_value_t = default_webcam_device())]
+        device_index: i8,
+    },
+}
+
+#[derive(Clone)]
+pub struct PathBuf(std::path::PathBuf);
+
+impl Display for PathBuf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0.to_str().unwrap_or(""))
+    }
+}
+
+impl AsRef<Path> for PathBuf {
+    fn as_ref(&self) -> &Path {
+        self.0.as_path()
+    }
+}
+
+impl From<OsString> for PathBuf {
+    fn from(value: OsString) -> Self {
+        PathBuf(std::path::PathBuf::from(value))
+    }
 }
 
 impl Default for CliSubCommand {
@@ -127,13 +166,32 @@ where
     deserializer.deserialize_any(Base32Parser)
 }
 
-fn default_config_file() -> String {
-    format!(
-        "{:?}",
+fn default_config_file() -> PathBuf {
+    PathBuf(
         dirs::config_dir()
             .map(|dir| dir.join("ybm.toml"))
-            .expect("System configuration directory")
+            .expect("System configuration directory"),
     )
+}
+
+fn default_webcam_device() -> i8 {
+    if let Some(backend) = nokhwa::native_api_backend() {
+        if let Ok(mut device_list) = nokhwa::query(backend) {
+            device_list.sort_by_key(|device| device.index().clone());
+            return if !device_list.is_empty() {
+                device_list
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .index()
+                    .as_index()
+                    .unwrap() as i8
+            } else {
+                -1
+            };
+        }
+    }
+    -2
 }
 
 fn default_password_length() -> u32 {

@@ -1,6 +1,8 @@
 use crate::settings::Account;
 use chrono::{Local, Timelike};
 
+pub mod qrcode;
+
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_lite::{totp_custom, Sha1, DEFAULT_STEP};
 

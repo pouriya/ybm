@@ -17,3 +17,11 @@ ratatui = "0.26.1"
 crossterm = {version = "0.27.0", features = ["serde"]}
 totp-lite = "2.0.0"
 chrono = {version = "0.4.31", default-features = false, features = ["clock"]}
+nokhwa = {version = "0.10.4", features = ["input-native"]}
+image = "0.25.0"
+rqrr = "0.7.1"
+iced = {version = "0.12.1", features = ["image", "tokio", "advanced", "lazy"]}
+tokio = {version = "1.36.0", features = ["full"]}
+tracing-subscriber = { version = "0.3.18" }
+tracing-appender = "0.2.3"
+tracing = "0.1.40"
